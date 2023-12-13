@@ -1,0 +1,113 @@
+function calculateFinalAmount(winLossStatus, betAmount, playType, numPicks, correctPicks, numDNPs, numTies, numReboots) {
+  // Handling refunds
+  if (winLossStatus === "Refund") {
+    return betAmount;
+  }
+
+  // Handling losses
+  if (winLossStatus === "Loss") {
+    return -betAmount;
+  }
+
+  // Adjusting the number of picks for DNPs, ties, and reboots
+  var adjustedPicks = numPicks - numDNPs - numTies - numReboots;
+
+  // Handling reboots
+  if (winLossStatus === "Reboot") {
+    // Reboot logic for Power Play
+    if (playType === "Power Play") {
+      if (numPicks === 4 && adjustedPicks < 4) {
+        adjustedPicks = 3; // 4-Pick Power → 3-Pick Power
+      } else if (numPicks === 3 && adjustedPicks < 3) {
+        adjustedPicks = 2; // 3-Pick Power → 2-Pick Power
+      } else if (numPicks === 2) {
+        return betAmount; // 2-Pick Power → Refund
+      }
+    }
+    // Reboot logic for Flex Play
+    else if (playType === "Flex Play") {
+      if (numPicks === 6 && adjustedPicks < 6) {
+        adjustedPicks = 5; // 6-Pick Flex → 5-Pick Flex
+      } else if (numPicks === 5 && adjustedPicks < 5) {
+        adjustedPicks = 4; // 5-Pick Flex → 4-Pick Flex
+      } else if (numPicks === 4 && adjustedPicks < 4) {
+        adjustedPicks = 3; // 4-Pick Flex → 3-Pick Flex
+      } else if (numPicks === 3) {
+        adjustedPicks = 2; // 3-Pick Flex → 2-Pick Power
+      }
+    }
+  }
+
+  // Handling DNPs and Ties (other than reboot scenarios)
+  if (winLossStatus === "DNP" || winLossStatus === "Tie") {
+    if (playType === "Power Play" && adjustedPicks < 2) {
+      return betAmount; // 2-Pick Power Play reverts to a refund
+    } else if (playType === "Flex Play" && adjustedPicks < 3) {
+      return betAmount; // 3-Pick Flex or less reverts to Power Play refund
+    }
+  }
+
+  // Handling ties for Power Play
+  if (winLossStatus === "Tie" && playType === "Power Play" && adjustedPicks === 1 && correctPicks === 1) {
+    return betAmount * 1.5; // Special case for 2-Pick Power with 1 correct pick and 1 tie
+  }
+
+  // Handling wins or adjusted picks for reboots, DNPs, and ties
+  return calculatePayout(playType, adjustedPicks, correctPicks, betAmount);
+}
+
+// Function to calculate payouts based on play type
+function calculatePayout(playType, numPicks, correctPicks, betAmount) {
+  if (playType === "Power Play") {
+    return calculatePowerPlayPayout(numPicks, correctPicks, betAmount);
+  } else if (playType === "Flex Play") {
+    return calculateFlexPlayPayout(numPicks, correctPicks, betAmount);
+  }
+  return "Invalid Play Type"; // For any other unhandled play types
+}
+
+// Power Play payout calculation
+function calculatePowerPlayPayout(numPicks, correctPicks, betAmount) {
+  if (numPicks === correctPicks) {
+    switch (numPicks) {
+      case 4: return betAmount * 10;
+      case 3: return betAmount * 5;
+      case 2: return betAmount * 3;
+      default: return 0;
+    }
+  }
+  return 0; // No payout unless all picks are correct
+}
+
+// Flex Play payout calculation
+function calculateFlexPlayPayout(numPicks, correctPicks, betAmount) {
+  switch (numPicks) {
+    case 6:
+      switch (correctPicks) {
+        case 6: return betAmount * 25;
+        case 5: return betAmount * 2;
+        case 4: return betAmount * 0.4;
+        default: return 0;
+      }
+    case 5:
+      switch (correctPicks) {
+        case 5: return betAmount * 10;
+        case 4: return betAmount * 2;
+        case 3: return betAmount * 0.4;
+        default: return 0;
+      }
+    case 4:
+      switch (correctPicks) {
+        case 4: return betAmount * 5;
+        case 3: return betAmount * 1.5;
+        default: return 0;
+      }
+    case 3:
+      switch (correctPicks) {
+        case 3: return betAmount * 2.25;
+        case 2: return betAmount * 1.25;
+        default: return 0;
+      }
+    default: return 0; // No payout for other cases
+  }
+}
